@@ -66,6 +66,7 @@ public class PatientDAO {
 
         DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
         final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
+        helper.close();
         String patientUUID = "";
         if (null != cursor) {
             try {

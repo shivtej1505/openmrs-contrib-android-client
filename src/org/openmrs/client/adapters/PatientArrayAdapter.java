@@ -12,6 +12,8 @@ import android.widget.TextView;
 
 import org.openmrs.client.R;
 import org.openmrs.client.activities.PatientDashboardActivity;
+import org.openmrs.client.application.OpenMRS;
+import org.openmrs.client.application.OpenMRSLogger;
 import org.openmrs.client.dao.PatientDAO;
 import org.openmrs.client.models.Patient;
 import org.openmrs.client.net.FindVisitsManager;
@@ -26,6 +28,7 @@ public class PatientArrayAdapter extends ArrayAdapter<Patient> {
     private Activity mContext;
     private List<Patient> mItems;
     private int mResourceID;
+    private final OpenMRSLogger mOpenMRSLogger = OpenMRS.getInstance().getOpenMRSLogger();
 
     class ViewHolder {
         private LinearLayout mRowLayout;
@@ -103,8 +106,8 @@ public class PatientArrayAdapter extends ArrayAdapter<Patient> {
                 @Override
                 public void onClick(View v) {
                     if (((CheckBox) v).isChecked()) {
-                        long patientId = new PatientDAO().savePatient(patient);
-                        new FindVisitsManager(mContext).findActiveVisitsForPatientByUUID(patient.getUuid(), patientId);
+                        SavePatientThread thread = new SavePatientThread(patient);
+                        thread.start();
                         ToastUtil.showShortToast(mContext,
                                             ToastUtil.ToastType.SUCCESS,
                                             R.string.find_patients_row_toast_patient_saved);
@@ -121,5 +124,20 @@ public class PatientArrayAdapter extends ArrayAdapter<Patient> {
         holder.mAvailableOfflineCheckbox.setChecked(true);
         holder.mAvailableOfflineCheckbox.setClickable(false);
         holder.mAvailableOfflineCheckbox.setText(mContext.getString(R.string.find_patients_row_checkbox_available_offline_label));
+    }
+
+    private class SavePatientThread extends Thread {
+        private Patient mPatient;
+
+        public SavePatientThread(Patient patient) {
+            mPatient = patient;
+        }
+
+        @Override
+        public void run() {
+            mOpenMRSLogger.d("SavePatient Thread started.");
+            long patientId = new PatientDAO().savePatient(mPatient);
+            new FindVisitsManager(mContext).findActiveVisitsForPatientByUUID(mPatient.getUuid(), patientId);
+        }
     }
 }

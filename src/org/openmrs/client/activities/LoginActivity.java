@@ -110,7 +110,14 @@ public class LoginActivity extends ACBaseActivity {
     private void login() {
         mLoginFormView.setVisibility(View.GONE);
         mSpinner.setVisibility(View.VISIBLE);
-        mAuthorizationManager.login(mUsername.getText().toString(), mPassword.getText().toString());
+        new Thread() {
+            @Override
+            public void run() {
+                mOpenMRSLogger.d("Authorisation Thread started.");
+                mAuthorizationManager.login(mUsername.getText().toString(), mPassword.getText().toString());
+            }
+        } .run();
+        //mAuthorizationManager.login(mUsername.getText().toString(), mPassword.getText().toString());
     }
 
     public void login(boolean validateURL) {

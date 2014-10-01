@@ -1,4 +1,4 @@
-package org.openmrs.client.test.robotium;
+package org.openmrs.client.test.acceptance;
 
 import android.test.ActivityInstrumentationTestCase2;
 import android.view.View;
@@ -8,9 +8,10 @@ import com.jayway.android.robotium.solo.Solo;
 
 import org.openmrs.client.activities.LoginActivity;
 import org.openmrs.client.R;
+import org.openmrs.client.test.acceptance.helpers.LoginHelper;
+import org.openmrs.client.test.acceptance.helpers.WaitHelper;
 
-public class LoginActivityTest extends
-        ActivityInstrumentationTestCase2<LoginActivity> {
+public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginActivity> {
 
     private Solo solo;
     private static final String WRONG_SERVER_URL = "http://openmrs-ac-ci.soldevelo.com:8080/openmrs-standalone";
@@ -31,8 +32,6 @@ public class LoginActivityTest extends
     }
 
     public void testEmptyFields() throws Exception {
-        assertTrue(solo.waitForActivity(LoginActivity.class, 60000));
-
         EditText loginUsernameField = (EditText) solo.getView(R.id.loginUsernameField);
         EditText loginPasswordField = (EditText) solo.getView(R.id.loginPasswordField);
         View loginButton = solo.getView(R.id.loginButton);
@@ -43,7 +42,6 @@ public class LoginActivityTest extends
 
         //Click on Login button
         WaitHelper.waitForText(solo, LoginHelper.LOGIN_BUTTON);
-        //solo.clickOnButton(LoginHelper.LOGIN_BUTTON);
         solo.clickOnView(loginButton);
 
         assertTrue(WaitHelper.waitForText(solo, EMPTY_FIELD));
@@ -54,7 +52,6 @@ public class LoginActivityTest extends
         solo.enterText(loginUsernameField, LoginHelper.LOGIN);
 
         //Click on Login button
-        //solo.clickOnButton(LoginHelper.LOGIN_BUTTON);
         solo.clickOnView(loginButton);
 
         assertTrue(WaitHelper.waitForText(solo, EMPTY_FIELD));
@@ -65,15 +62,12 @@ public class LoginActivityTest extends
         solo.enterText(loginPasswordField, LoginHelper.PASSWORD);
 
         //Click on Login button
-        //solo.clickOnButton(LoginHelper.LOGIN_BUTTON);
         solo.clickOnView(loginButton);
 
         assertTrue(WaitHelper.waitForText(solo, EMPTY_FIELD));
     }
 
     public void testLoginFailed() throws Exception {
-        assertTrue(solo.waitForActivity(LoginActivity.class, 60000));
-
         //Write login
         EditText loginUsernameField = (EditText) solo.getView(R.id.loginUsernameField);
         solo.clearEditText(loginUsernameField);
@@ -86,8 +80,6 @@ public class LoginActivityTest extends
 
         //Click on Login button
         View loginButton = solo.getView(org.openmrs.client.R.id.loginButton);
-        //assertTrue(WaitHelper.waitForText(solo, LOGIN_BUTTON));
-        //solo.clickOnButton(LOGIN_BUTTON);
         WaitHelper.waitForText(solo, LoginHelper.LOGIN_BUTTON);
         solo.clickOnView(loginButton);
 
@@ -104,8 +96,6 @@ public class LoginActivityTest extends
     }
 
     public void testWrongUrl() throws Exception {
-        assertTrue(solo.waitForActivity(LoginActivity.class, 60000));
-
         //Write login
         EditText loginUsernameField = (EditText) solo.getView(R.id.loginUsernameField);
         solo.clearEditText(loginUsernameField);
@@ -118,8 +108,6 @@ public class LoginActivityTest extends
 
         //Click on Login button
         View loginButton = solo.getView(org.openmrs.client.R.id.loginButton);
-        //assertTrue(WaitHelper.waitForText(solo, LOGIN_BUTTON));
-        //solo.clickOnButton(LOGIN_BUTTON);
         WaitHelper.waitForText(solo, LoginHelper.LOGIN_BUTTON);
         solo.clickOnView(loginButton);
 
@@ -131,15 +119,12 @@ public class LoginActivityTest extends
         //Click on Done button
         View doneButton = solo.getView(org.openmrs.client.R.id.dialogFormButtonsSubmitButton);
         WaitHelper.waitForText(solo, LoginHelper.DONE_BUTTON);
-        //assertTrue(WaitHelper.waitForText(solo, DONE_BUTTON));
-        //solo.clickOnButton(DONE_BUTTON);
         solo.clickOnView(doneButton);
 
         assertTrue(WaitHelper.waitForText(solo, "Cancel"));
     }
 
     public void testLogin() throws Exception {
-        assertTrue(solo.waitForActivity(LoginActivity.class, 60000));
         assertTrue(LoginHelper.login(solo));
     }
 

@@ -75,6 +75,7 @@ public class PatientDAO {
                 }
             } finally {
                 cursor.close();
+                helper.close();
             }
         }
         return uuid.equalsIgnoreCase(patientUUID);

@@ -1,13 +1,15 @@
-package org.openmrs.client.test.robotium;
-
+package org.openmrs.client.test.acceptance;
 
 import android.test.ActivityInstrumentationTestCase2;
+import android.view.View;
 
 import com.jayway.android.robotium.solo.Solo;
 
 import org.openmrs.client.activities.DashboardActivity;
 import org.openmrs.client.activities.LoginActivity;
 import org.openmrs.client.activities.SettingsActivity;
+import org.openmrs.client.test.acceptance.helpers.LoginHelper;
+import org.openmrs.client.test.acceptance.helpers.WaitHelper;
 
 public class LogoutTest extends ActivityInstrumentationTestCase2<DashboardActivity> {
 
@@ -30,11 +32,12 @@ public class LogoutTest extends ActivityInstrumentationTestCase2<DashboardActivi
     }
 
     public void testLogout() throws Exception {
-        solo.waitForActivity(DashboardActivity.class, WaitHelper.ACTIVITY_TIMEOUT);
         solo.assertCurrentActivity("Wrong activity. DashboardActivity expected", DashboardActivity.class);
 
         //open menu
-        solo.clickOnMenuItem("Settings");
+        solo.sendKey(Solo.MENU);
+        assertTrue(WaitHelper.waitForText(solo, "Settings"));
+        solo.clickOnText("Settings");
 
         assertTrue(WaitHelper.waitForActivity(solo, SettingsActivity.class));
         solo.assertCurrentActivity("Wrong activity. SettingsActivity expected", SettingsActivity.class);
@@ -45,8 +48,9 @@ public class LogoutTest extends ActivityInstrumentationTestCase2<DashboardActivi
         assertTrue(WaitHelper.waitForText(solo, "Logging out"));
 
         //Click on Cancel button
-        assertTrue(WaitHelper.waitForText(solo, "Cancel"));
-        solo.clickOnButton("Cancel");
+        View cancelButton = solo.getView(org.openmrs.client.R.id.dialogFormButtonsCancelButton);
+        WaitHelper.waitForText(solo, "Cancel");
+        solo.clickOnView(cancelButton);
 
         solo.assertCurrentActivity("Wrong activity. SettingsActivity expected", SettingsActivity.class);
 
@@ -56,11 +60,11 @@ public class LogoutTest extends ActivityInstrumentationTestCase2<DashboardActivi
         assertTrue(WaitHelper.waitForText(solo, "Logging out"));
 
         //Click on Logout button
-        assertTrue(WaitHelper.waitForText(solo, "Logout"));
-        solo.clickOnButton("Logout");
+        View logoutButton = solo.getView(org.openmrs.client.R.id.dialogFormButtonsSubmitButton);
+        WaitHelper.waitForText(solo, "Logout");
+        solo.clickOnView(logoutButton);
 
-        assertTrue(WaitHelper.waitForActivity(solo, LoginActivity.class));
-        solo.assertCurrentActivity("Wrong activity. LoginActivity expected", LoginActivity.class);
+        assertTrue(solo.waitForActivity(LoginActivity.class, WaitHelper.TIMEOUT_THIRTY_SECOND));
     }
 
     @Override

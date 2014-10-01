@@ -1,14 +1,13 @@
-package org.openmrs.client.test.robotium;
+package org.openmrs.client.test.acceptance.helpers;
 
 import android.util.Log;
 
 import com.jayway.android.robotium.solo.Solo;
 
 public final class WaitHelper {
-
-    public static final long TIMEOUT = 30000;
-    private static final long MAX_TIMEOUT = 240000;
-    public static final int ACTIVITY_TIMEOUT = 30000;
+    public static final int TIMEOUT_ONE_SECOND = 1000;
+    public static final int TIMEOUT_THIRTY_SECOND = 30 * TIMEOUT_ONE_SECOND;
+    public static final long TIMEOUT_FOUR_MINUTES = 240 * TIMEOUT_ONE_SECOND;
 
     public static final String TAG = "OpenMRSTest";
     private static final String TIME = "Time: ";
@@ -20,9 +19,9 @@ public final class WaitHelper {
     public static boolean waitForText(Solo solo, String txt) throws java.lang.Exception {
         boolean result = false;
         int sec = 0;
-        while (!result && sec * 1000 < MAX_TIMEOUT) {
-            result = solo.waitForText(txt, 1, TIMEOUT);
-            sec = sec + (int) TIMEOUT / 1000;
+        while (!result && sec * TIMEOUT_ONE_SECOND < TIMEOUT_FOUR_MINUTES) {
+            result = solo.waitForText(txt, 1, TIMEOUT_THIRTY_SECOND);
+            sec = sec + TIMEOUT_THIRTY_SECOND / TIMEOUT_ONE_SECOND;
             Log.d(TAG, TIME + sec + "s., WaitForText: " + txt + RESULT + result);
         }
         return result;
@@ -31,9 +30,9 @@ public final class WaitHelper {
     public static boolean waitForText(Solo solo, String txt, long timeout) throws java.lang.Exception {
         boolean result = false;
         int sec = 0;
-        while (!result && sec * 1000 < timeout) {
-            result = solo.waitForText(txt, 1, TIMEOUT);
-            sec = sec + (int) TIMEOUT / 1000;
+        while (!result && sec * TIMEOUT_ONE_SECOND < timeout) {
+            result = solo.waitForText(txt, 1, TIMEOUT_THIRTY_SECOND);
+            sec = sec + TIMEOUT_THIRTY_SECOND / TIMEOUT_ONE_SECOND;
             Log.d(TAG, TIME + sec + "s., WaitForText: " + txt + RESULT + result);
         }
         return result;
@@ -42,9 +41,9 @@ public final class WaitHelper {
     public static boolean waitForActivity(Solo solo, java.lang.Class<? extends android.app.Activity> activityClass) throws java.lang.Exception {
         boolean result = false;
         int sec = 0;
-        while (!result && sec * 1000 < MAX_TIMEOUT) {
-            result = solo.waitForActivity(activityClass, (int) TIMEOUT);
-            sec = sec + (int) TIMEOUT / 1000;
+        while (!result && sec * TIMEOUT_ONE_SECOND < TIMEOUT_FOUR_MINUTES) {
+            result = solo.waitForActivity(activityClass, TIMEOUT_THIRTY_SECOND);
+            sec = sec + TIMEOUT_THIRTY_SECOND / TIMEOUT_ONE_SECOND;
             Log.d(TAG, TIME + sec + "s., WaitForActivity: " + activityClass + RESULT + result);
         }
         return result;
@@ -53,9 +52,9 @@ public final class WaitHelper {
     public static boolean waitForActivity(Solo solo, java.lang.Class<? extends android.app.Activity> activityClass, long timeout) throws java.lang.Exception {
         boolean result = false;
         int sec = 0;
-        while (!result && sec * 1000 < timeout) {
-            result = solo.waitForActivity(activityClass, (int) TIMEOUT);
-            sec = sec + (int) TIMEOUT / 1000;
+        while (!result && sec * TIMEOUT_ONE_SECOND < timeout) {
+            result = solo.waitForActivity(activityClass, TIMEOUT_THIRTY_SECOND);
+            sec = sec + TIMEOUT_THIRTY_SECOND / TIMEOUT_ONE_SECOND;
             Log.d(TAG, TIME + sec + "s., WaitForActivity: " + activityClass + RESULT + result);
         }
         return result;

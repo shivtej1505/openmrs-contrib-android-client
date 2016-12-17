@@ -49,6 +49,11 @@ public final class ToastUtil {
         showToast(OpenMRS.getInstance(), ToastType.NOTICE, message, Toast.LENGTH_SHORT);
     }
 
+    public static void notify(int textId) {
+        Context context = OpenMRS.getInstance();
+        showToast(context, ToastType.NOTICE, context.getResources().getString(textId), Toast.LENGTH_SHORT);
+    }
+
     public static void success(String message) {
         showToast(OpenMRS.getInstance(), ToastType.SUCCESS, message, Toast.LENGTH_SHORT);
     }
@@ -74,7 +79,7 @@ public final class ToastUtil {
     }
 
     private static void showToast(Context context, ToastType type,
-                                 String text, final int duration) {
+                                  String text, final int duration) {
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View toastRoot = inflater.inflate(R.layout.toast, null);
 

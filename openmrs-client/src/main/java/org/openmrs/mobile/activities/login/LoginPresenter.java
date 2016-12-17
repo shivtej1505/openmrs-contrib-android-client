@@ -14,6 +14,7 @@
 
 package org.openmrs.mobile.activities.login;
 
+import org.openmrs.mobile.R;
 import org.openmrs.mobile.api.RestApi;
 import org.openmrs.mobile.api.RestServiceBuilder;
 import org.openmrs.mobile.api.UserService;
@@ -29,6 +30,7 @@ import org.openmrs.mobile.models.retrofit.Session;
 import org.openmrs.mobile.models.retrofit.VisitType;
 import org.openmrs.mobile.net.AuthorizationManager;
 import org.openmrs.mobile.utilities.ApplicationConstants;
+import org.openmrs.mobile.utilities.NetworkUtils;
 import org.openmrs.mobile.utilities.StringUtils;
 import org.openmrs.mobile.utilities.ToastUtil;
 
@@ -81,58 +83,81 @@ public class LoginPresenter implements LoginContract.Presenter{
     @Override
     public void authenticateUser(final String username, final String password, final String url, final boolean wipeDatabase) {
         loginView.showLoadingAnimation();
-        mWipeRequired = wipeDatabase;
-        RestApi restApi = RestServiceBuilder.createService(RestApi.class, username, password);
-        Call<Session> call = restApi.getSession();
-        call.enqueue(new Callback<Session>() {
-            @Override
-            public void onResponse(Call<Session> call, Response<Session> response) {
-                mLogger.d(response.body().toString());
-                if (response.isSuccessful()) {
-                    Session session = response.body();
-                    if (session.isAuthenticated()) {
-                        if (wipeDatabase) {
-                            mOpenMRS.deleteDatabase(OpenMRSSQLiteOpenHelper.DATABASE_NAME);
-                            setData(session.getSessionId(), url, username, password);
-                            mWipeRequired = false;
-                        } if (authorizationManager.isUserNameOrServerEmpty()) {
-                            setData(session.getSessionId(), url, username, password);
+
+        if (NetworkUtils.hasNetwork()) {
+            mWipeRequired = wipeDatabase;
+            RestApi restApi = RestServiceBuilder.createService(RestApi.class, username, password);
+            Call<Session> call = restApi.getSession();
+            call.enqueue(new Callback<Session>() {
+                @Override
+                public void onResponse(Call<Session> call, Response<Session> response) {
+                    mLogger.d(response.body().toString());
+                    if (response.isSuccessful()) {
+                        Session session = response.body();
+                        if (session.isAuthenticated()) {
+                            if (wipeDatabase) {
+                                mOpenMRS.deleteDatabase(OpenMRSSQLiteOpenHelper.DATABASE_NAME);
+                                setData(session.getSessionId(), url, username, password);
+                                mWipeRequired = false;
+                            }
+                            if (authorizationManager.isUserNameOrServerEmpty()) {
+                                setData(session.getSessionId(), url, username, password);
+                            } else {
+                                mOpenMRS.setSessionToken(session.getSessionId());
+                            }
+
+                            new VisitApi().getVisitType(new GetVisitTypeCallbackListener() {
+                                @Override
+                                public void onGetVisitTypeResponse(VisitType visitType) {
+                                    OpenMRS.getInstance().setVisitTypeUUID(visitType.getUuid());
+                                }
+
+                                @Override
+                                public void onResponse() {
+                                }
+
+                                @Override
+                                public void onErrorResponse() {
+                                    ToastUtil.error("Failed to fetch visit type");
+                                }
+                            });
+                            setFirstLogin(true);
+                            new UserService().updateUserInformation(username);
+
+                            loginView.userAuthenticated();
+                            loginView.finishLoginActivity();
                         } else {
-                            mOpenMRS.setSessionToken(session.getSessionId());
+                            loginView.sendIntentBroadcast(ApplicationConstants.CustomIntentActions.ACTION_AUTH_FAILED_BROADCAST);
                         }
-
-                        new VisitApi().getVisitType(new GetVisitTypeCallbackListener() {
-                            @Override
-                            public void onGetVisitTypeResponse(VisitType visitType) {
-                                OpenMRS.getInstance().setVisitTypeUUID(visitType.getUuid());
-                            }
-                            @Override
-                            public void onResponse() {}
-                            @Override
-                            public void onErrorResponse() {
-                                ToastUtil.error("Failed to fetch visit type");
-                            }
-                        });
-
-                        new UserService().updateUserInformation(username);
-
-                        loginView.userAuthenticated();
-                        loginView.finishLoginActivity();
                     } else {
-                        loginView.sendIntentBroadcast(ApplicationConstants.CustomIntentActions.ACTION_AUTH_FAILED_BROADCAST);
+                        loginView.hideLoadingAnimation();
+                        ToastUtil.error(response.message());
                     }
+                }
+
+                @Override
+                public void onFailure(Call<Session> call, Throwable t) {
+                    loginView.hideLoadingAnimation();
+                    ToastUtil.error(t.getMessage());
+                }
+            });
+        } else {
+
+            if (mOpenMRS.getFirstLogin()) {
+                if (mOpenMRS.getUsername().equals(username) && mOpenMRS.getPassword().equals(password)) {
+                    mOpenMRS.setSessionToken(mOpenMRS.getLastSessionToken());
+                    ToastUtil.notify("LoggedIn in offline mode.");
+                    loginView.userAuthenticated();
+                    loginView.finishLoginActivity();
                 } else {
                     loginView.hideLoadingAnimation();
-                    ToastUtil.error(response.message());
+                    ToastUtil.notify(R.string.auth_failed_dialog_message);
                 }
-            }
-
-            @Override
-            public void onFailure(Call<Session> call, Throwable t) {
+            } else {
+                ToastUtil.notify(R.string.no_internet_conn_dialog_message);
                 loginView.hideLoadingAnimation();
-                ToastUtil.error(t.getMessage());
             }
-        });
+        }
     }
 
 
@@ -148,33 +173,47 @@ public class LoginPresenter implements LoginContract.Presenter{
     @Override
     public void loadLocations(final String url) {
         loginView.showLocationLoadingAnimation();
-        String locationEndPoint = url + ApplicationConstants.API.REST_ENDPOINT + "location";
-        RestApi restApi = RestServiceBuilder.createService(RestApi.class);
-        Call<Results<Location>> call = restApi.getLocations(locationEndPoint, "Login Location", "full");
-        call.enqueue(new Callback<Results<Location>>() {
-            @Override
-            public void onResponse(Call<Results<Location>> call, Response<Results<Location>> response) {
-                if(response.isSuccessful()){
-                    RestServiceBuilder.changeBaseUrl(url.trim());
-                    mOpenMRS.setServerUrl(url);
-                    loginView.initLoginForm(response.body().getResults(), url);
-                    loginView.startFormListService();
-                    loginView.setLocationErrorOccurred(false);
-                } else {
-                    loginView.showInvalidURLSnackbar("Failed to fetch server's locations");
+
+        if (NetworkUtils.hasNetwork()) {
+            String locationEndPoint = url + ApplicationConstants.API.REST_ENDPOINT + "location";
+            RestApi restApi = RestServiceBuilder.createService(RestApi.class);
+            Call<Results<Location>> call = restApi.getLocations(locationEndPoint, "Login Location", "full");
+            call.enqueue(new Callback<Results<Location>>() {
+                @Override
+                public void onResponse(Call<Results<Location>> call, Response<Results<Location>> response) {
+                    if (response.isSuccessful()) {
+                        RestServiceBuilder.changeBaseUrl(url.trim());
+                        mOpenMRS.setServerUrl(url);
+                        mOpenMRS.setLocations(response.body().getResults());
+                        loginView.initLoginForm(response.body().getResults(), url);
+                        loginView.startFormListService();
+                        loginView.setLocationErrorOccurred(false);
+                    } else {
+                        loginView.showInvalidURLSnackbar("Failed to fetch server's locations");
+                        loginView.setLocationErrorOccurred(true);
+                    }
+                    loginView.hideUrlLoadingAnimation();
+                }
+
+                @Override
+                public void onFailure(Call<Results<Location>> call, Throwable t) {
+                    loginView.hideUrlLoadingAnimation();
+                    loginView.showInvalidURLSnackbar(t.getMessage());
                     loginView.setLocationErrorOccurred(true);
                 }
-                loginView.hideUrlLoadingAnimation();
-            }
-
-            @Override
-            public void onFailure(Call<Results<Location>> call, Throwable t) {
-                loginView.hideUrlLoadingAnimation();
-                loginView.hideLoadingAnimation();
-                loginView.showInvalidURLSnackbar(t.getMessage());
+            });
+        } else {
+            List<Location> locations = mOpenMRS.getLocations();
+            if (locations != null) {
+                loginView.initLoginForm(locations, url);
+                loginView.setLocationErrorOccurred(false);
+            } else {
+                ToastUtil.error("Network not available.");
                 loginView.setLocationErrorOccurred(true);
             }
-        });
+            loginView.hideLoadingAnimation();
+        }
+
     }
 
     private boolean validateLoginFields(String username, String password, String url) {
@@ -186,5 +225,9 @@ public class LoginPresenter implements LoginContract.Presenter{
         mOpenMRS.setServerUrl(url);
         mOpenMRS.setUsername(username);
         mOpenMRS.setPassword(password);
+    }
+
+    private void setFirstLogin(boolean firstLogin) {
+        mOpenMRS.setFirstLogin(firstLogin);
     }
 }

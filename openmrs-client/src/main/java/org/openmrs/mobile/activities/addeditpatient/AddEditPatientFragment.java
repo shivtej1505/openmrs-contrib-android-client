@@ -17,7 +17,16 @@ package org.openmrs.mobile.activities.addeditpatient;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
+import android.media.ThumbnailUtils;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -29,6 +38,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -53,13 +63,18 @@ import org.openmrs.mobile.utilities.StringUtils;
 import org.openmrs.mobile.utilities.ToastUtil;
 import org.openmrs.mobile.utilities.ViewUtils;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
-public class AddEditPatientFragment extends Fragment implements AddEditPatientContract.View {
+import static android.app.Activity.RESULT_OK;
 
+public class AddEditPatientFragment extends Fragment implements AddEditPatientContract.View {
     private AddEditPatientContract.Presenter mPresenter;
 
     private LocalDate birthdate;
@@ -91,7 +106,12 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
     private Button submitConfirm;
 
     private String[] countries;
+    private ImageView patientImageView;
 
+    private FloatingActionButton capturePhoto;
+    private Bitmap patientPhoto = null;
+    private File output = null;
+    private final static int IMAGE_REQUEST = 1;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -121,7 +141,7 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
 
     @Override
     public void scrollToTop() {
-        ScrollView scrollView=(ScrollView)this.getActivity().findViewById(R.id.scrollView);
+        ScrollView scrollView = (ScrollView)this.getActivity().findViewById(R.id.scrollView);
         scrollView.smoothScrollTo(0, scrollView.getPaddingTop());
     }
 
@@ -238,6 +258,8 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         final Patient patient = new Patient();
         patient.setPerson(createPerson());
         patient.setUuid(" ");
+        if (patientPhoto != null)
+            patient.getPerson().setPhoto(patientPhoto);
         return patient;
     }
 
@@ -247,7 +269,7 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
     }
 
     @Override
-    public void hideSoftKeys(){
+    public void hideSoftKeys() {
         View view = this.getActivity().getCurrentFocus();
         if (view == null) {
             view = new View(this.getActivity());
@@ -295,27 +317,29 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         edfname = (EditText) v.findViewById(R.id.firstname);
         edmname = (EditText) v.findViewById(R.id.middlename);
         edlname = (EditText) v.findViewById(R.id.surname);
-        eddob=(EditText)v.findViewById(R.id.dob);
-        edyr=(EditText)v.findViewById(R.id.estyr);
-        edmonth=(EditText)v.findViewById(R.id.estmonth);
-        edaddr1=(EditText)v.findViewById(R.id.addr1);
-        edaddr2=(EditText)v.findViewById(R.id.addr2);
-        edcity=(EditText)v.findViewById(R.id.city);
-        edstate=(EditText)v.findViewById(R.id.state);
-        edcountry=(AutoCompleteTextView) v.findViewById(R.id.country);
-        edpostal=(EditText)v.findViewById(R.id.postal);
+        eddob = (EditText)v.findViewById(R.id.dob);
+        edyr = (EditText)v.findViewById(R.id.estyr);
+        edmonth = (EditText)v.findViewById(R.id.estmonth);
+        edaddr1 = (EditText)v.findViewById(R.id.addr1);
+        edaddr2 = (EditText)v.findViewById(R.id.addr2);
+        edcity = (EditText)v.findViewById(R.id.city);
+        edstate = (EditText)v.findViewById(R.id.state);
+        edcountry = (AutoCompleteTextView) v.findViewById(R.id.country);
+        edpostal = (EditText)v.findViewById(R.id.postal);
 
-        gen=(RadioGroup)v.findViewById(R.id.gender);
+        gen = (RadioGroup)v.findViewById(R.id.gender);
         progressBar = (ProgressBar)v.findViewById(R.id.progress_bar);
 
-        fnameerror=(TextView)v.findViewById(R.id.fnameerror);
-        lnameerror=(TextView)v.findViewById(R.id.lnameerror);
-        doberror=(TextView)v.findViewById(R.id.doberror);
-        gendererror=(TextView)v.findViewById(R.id.gendererror);
-        addrerror=(TextView)v.findViewById(R.id.addrerror);
-        countryerror=(TextView)v.findViewById(R.id.countryerror);
+        fnameerror = (TextView)v.findViewById(R.id.fnameerror);
+        lnameerror = (TextView)v.findViewById(R.id.lnameerror);
+        doberror = (TextView)v.findViewById(R.id.doberror);
+        gendererror = (TextView)v.findViewById(R.id.gendererror);
+        addrerror = (TextView)v.findViewById(R.id.addrerror);
+        countryerror = (TextView)v.findViewById(R.id.countryerror);
 
         submitConfirm = (Button) v.findViewById(R.id.submitConfirm);
+        capturePhoto = (FloatingActionButton) v.findViewById(R.id.capture_photo);
+        patientImageView = (ImageView) v.findViewById(R.id.patientPhoto);
     }
 
     private void fillFields(final Patient patient) {
@@ -364,10 +388,8 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
     }
 
     private void addListeners() {
-        gen.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener()
-        {
-            public void onCheckedChanged(RadioGroup rGroup, int checkedId)
-            {
+        gen.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            public void onCheckedChanged(RadioGroup rGroup, int checkedId) {
                 gendererror.setVisibility(View.GONE);
             }
         });
@@ -386,7 +408,6 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         });
         if (eddob != null) {
             eddob.setOnClickListener(new View.OnClickListener() {
-
                 @Override
                 public void onClick(View v) {
                     int cYear;
@@ -407,7 +428,6 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
                     edmonth.getText().clear();
                     edyr.getText().clear();
 
-
                     DatePickerDialog mDatePicker=new DatePickerDialog(AddEditPatientFragment.this.getActivity(), new DatePickerDialog.OnDateSetListener() {
                         public void onDateSet(DatePicker datepicker, int selectedyear, int selectedmonth, int selectedday) {
                             int adjustedMonth = selectedmonth + 1;
@@ -421,10 +441,35 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
                     mDatePicker.show();  }
             });
         }
+
+        capturePhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                if (takePictureIntent.resolveActivity(getContext().getPackageManager()) != null) {
+                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+                    output = new File(dir, getUniqueImageFileName());
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(output));
+                    startActivityForResult(takePictureIntent, IMAGE_REQUEST);
+                }
+            }
+        });
+
         submitConfirm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 mPresenter.confirmRegister(createPatient());
+            }
+        });
+
+        patientImageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (output != null) {
+                    Intent i = new Intent(Intent.ACTION_VIEW);
+                    i.setDataAndType(Uri.fromFile(output), "image/jpeg");
+                    startActivity(i);
+                }
             }
         });
 
@@ -433,4 +478,40 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         edyr.addTextChangedListener(textWatcher);
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == IMAGE_REQUEST && resultCode == RESULT_OK) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 8;
+            patientPhoto = BitmapFactory.decodeFile(output.getPath(), options);
+            if (!isPortrait(output.getPath()))
+                patientPhoto = rotateImage(patientPhoto, 90);
+            Bitmap bitmap = ThumbnailUtils.extractThumbnail(patientPhoto, patientImageView.getWidth(), patientImageView.getHeight());
+            patientImageView.setImageBitmap(bitmap);
+            patientImageView.invalidate();
+        }
+    }
+
+    private String getUniqueImageFileName() {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        return timeStamp + "_" + ".jpg";
+    }
+
+    private boolean isPortrait(String imagePath) {
+        try {
+            ExifInterface exifInterface = new ExifInterface(imagePath);
+            int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+            return orientation != ExifInterface.ORIENTATION_ROTATE_90;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    public static Bitmap rotateImage(Bitmap source, float angle) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    }
 }

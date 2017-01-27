@@ -251,6 +251,9 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         }
         person.setBirthdate(birthdate);
 
+        if (patientPhoto != null)
+            person.setPhoto(patientPhoto);
+
         return person;
     }
 
@@ -258,8 +261,6 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         final Patient patient = new Patient();
         patient.setPerson(createPerson());
         patient.setUuid(" ");
-        if (patientPhoto != null)
-            patient.getPerson().setPhoto(patientPhoto);
         return patient;
     }
 
@@ -377,6 +378,9 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
             edstate.setText(person.getAddress().getStateProvince());
             edcountry.setText(person.getAddress().getCountry());
             edpostal.setText(person.getAddress().getPostalCode());
+            if (person.getPhoto() != null) {
+                patientImageView.setImageBitmap(person.getPhoto());
+            }
         }
     }
 

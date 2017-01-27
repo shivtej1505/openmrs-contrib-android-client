@@ -194,7 +194,6 @@ public class PatientApi extends RetrofitApi {
     public void updatePatient(final Patient patient, @Nullable final DefaultResponseCallbackListener callbackListener) {
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(OpenMRS.getInstance());
         Boolean syncstate = prefs.getBoolean("sync", true);
-        new PatientDAO().updatePatient(patient.getId(), patient);
         if (syncstate) {
             RestApi restApi = RestServiceBuilder.createService(RestApi.class);
             Call<Patient> call = restApi.updatePatient(patient, patient.getUuid(), "full");
@@ -202,6 +201,14 @@ public class PatientApi extends RetrofitApi {
                 @Override
                 public void onResponse(Call<Patient> call, Response<Patient> response) {
                     if (response.isSuccessful()) {
+                        patient.getPerson().setUuid(patient.getUuid());
+
+                        if (patient.getPerson().getPhoto() != null) {
+                            uploadPatientPhoto(patient);
+                        }
+
+                        new PatientDAO().updatePatient(patient.getId(), patient);
+
                         ToastUtil.success("Patient " + patient.getPerson().getName().getNameString()
                                 + " updated");
                         if (callbackListener != null) {
